@@ -1,6 +1,21 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { env } from './config/env.js';
 import { handlePickModal, handlePickSelect, startPick } from './interactions/pick-flow.js';
+import {
+  showDuplicates,
+  showLastWeek,
+  showLinkStatus,
+  showMissingPicks,
+  showMyPick,
+  showParlayStatus,
+  showPickHistory,
+  showRandomManager,
+  showRecord,
+  showRules,
+  showTicket,
+  showWeekResult,
+  showWeeklyPicks
+} from './interactions/parlay-commands.js';
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -14,8 +29,52 @@ client.once(Events.ClientReady, (readyClient) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (interaction.isChatInputCommand()) {
-      if (interaction.commandName === 'pick') {
-        await startPick(interaction);
+      switch (interaction.commandName) {
+        case 'pick':
+          await startPick(interaction, 'pick');
+          break;
+        case 'replacepick':
+          await startPick(interaction, 'replace');
+          break;
+        case 'weeklypicks':
+          await showWeeklyPicks(interaction);
+          break;
+        case 'mypick':
+          await showMyPick(interaction);
+          break;
+        case 'missingpicks':
+          await showMissingPicks(interaction);
+          break;
+        case 'parlaystatus':
+          await showParlayStatus(interaction);
+          break;
+        case 'duplicates':
+          await showDuplicates(interaction);
+          break;
+        case 'ticket':
+          await showTicket(interaction);
+          break;
+        case 'pickhistory':
+          await showPickHistory(interaction);
+          break;
+        case 'record':
+          await showRecord(interaction);
+          break;
+        case 'weekresult':
+          await showWeekResult(interaction);
+          break;
+        case 'randommanager':
+          await showRandomManager(interaction);
+          break;
+        case 'rules':
+          await showRules(interaction);
+          break;
+        case 'linkstatus':
+          await showLinkStatus(interaction);
+          break;
+        case 'lastweek':
+          await showLastWeek(interaction);
+          break;
       }
       return;
     }
@@ -33,12 +92,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (!interaction.isRepliable()) return;
 
-    const message = '❌ Something went wrong while handling that pick. Check the bot logs.';
+    const message =
+      error instanceof Error
+        ? `❌ ${error.message}`
+        : '❌ Something went wrong. Check the bot logs.';
 
     if (interaction.deferred || interaction.replied) {
-      await interaction.followUp({ content: message, ephemeral: true }).catch(() => undefined);
+      await interaction.followUp({ content: message, flags: 64 }).catch(() => undefined);
     } else {
-      await interaction.reply({ content: message, ephemeral: true }).catch(() => undefined);
+      await interaction.reply({ content: message, flags: 64 }).catch(() => undefined);
     }
   }
 });

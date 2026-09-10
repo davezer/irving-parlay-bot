@@ -1,16 +1,11 @@
 export const SPORTS = [
   ['NFL', 'nfl', '🏈'],
-  ['NCAAF', 'ncaaf', '🏈'],
-  ['NBA', 'nba', '🏀'],
-  ['NCAAB', 'ncaab', '🏀'],
-  ['MLB', 'mlb', '⚾'],
-  ['NHL', 'nhl', '🏒'],
-  ['Other', 'other', '🎯']
+  ['College Football', 'ncaaf', '🏈']
 ] as const;
 
 export const BET_TYPES = [
-  ['Player Prop', 'player_prop', 'Player statistical prop'],
-  ['Spread', 'spread', 'Team point/run/puck spread'],
+  ['Player Prop', 'player_prop', 'Passing, rushing, receiving, receptions, etc.'],
+  ['Spread', 'spread', 'Team point spread'],
   ['Moneyline', 'moneyline', 'Team to win'],
   ['Game Total', 'game_total', 'Full-game over/under'],
   ['Team Total', 'team_total', 'Team scoring over/under'],
@@ -29,7 +24,7 @@ export function labelForSport(value: string): string {
 }
 
 export function emojiForSport(value: string): string {
-  return SPORTS.find((sport) => sport[1] === value)?.[2] ?? '🎯';
+  return SPORTS.find((sport) => sport[1] === value)?.[2] ?? '🏈';
 }
 
 export function labelForBetType(value: string): string {

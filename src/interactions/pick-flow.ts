@@ -16,16 +16,16 @@ import {
   labelForBetType,
   labelForSport
 } from '../config/options.js';
-import { submitPickToIrving } from '../services/irving-api.js';
+import { linkDiscordMessageToIrving, submitPickToIrving } from '../services/irving-api.js';
 import type { PickSubmission } from '../types/pick.js';
 import { buildPickEmbed } from '../utils/embed.js';
 import { buildCustomId, parseCustomId } from '../utils/custom-id.js';
 import { cleanText, normalizeLine, normalizeOdds } from '../utils/validation.js';
 
-function sportRow(userId: string) {
+function sportRow(userId: string, mode: 'pick' | 'replace' = 'pick') {
   const menu = new StringSelectMenuBuilder()
-    .setCustomId(buildCustomId('pick', 'sport', userId))
-    .setPlaceholder('Choose a sport')
+    .setCustomId(buildCustomId(mode, 'sport', userId))
+    .setPlaceholder('NFL or College Football?')
     .addOptions(
       SPORTS.map(([label, value, emoji]) => ({
         label,
@@ -37,10 +37,10 @@ function sportRow(userId: string) {
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
 }
 
-function betTypeRow(userId: string, sport: string) {
+function betTypeRow(userId: string, sport: string, mode: 'pick' | 'replace' = 'pick') {
   const menu = new StringSelectMenuBuilder()
-    .setCustomId(buildCustomId('pick', 'type', userId, sport))
-    .setPlaceholder('Choose the type of bet')
+    .setCustomId(buildCustomId(mode, 'type', userId, sport))
+    .setPlaceholder('Choose the wager type')
     .addOptions(
       BET_TYPES.map(([label, value, description]) => ({
         label,
@@ -52,10 +52,10 @@ function betTypeRow(userId: string, sport: string) {
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
 }
 
-function directionRow(userId: string, sport: string, betType: string) {
+function directionRow(userId: string, sport: string, betType: string, mode: 'pick' | 'replace' = 'pick') {
   const menu = new StringSelectMenuBuilder()
-    .setCustomId(buildCustomId('pick', 'direction', userId, sport, betType))
-    .setPlaceholder('Choose Over or Under')
+    .setCustomId(buildCustomId(mode, 'direction', userId, sport, betType))
+    .setPlaceholder('Over or Under?')
     .addOptions(
       { label: 'Over', value: 'over', emoji: '⬆️' },
       { label: 'Under', value: 'under', emoji: '⬇️' }
@@ -81,13 +81,14 @@ function textInput(
     .setMaxLength(maxLength);
 }
 
-function buildPickModal(userId: string, sport: string, betType: string, direction: string | null) {
+function buildPickModal(userId: string, sport: string, betType: string, direction: string | null, mode: 'pick' | 'replace' = 'pick') {
   const modal = new ModalBuilder()
-    .setCustomId(buildCustomId('pick', 'modal', userId, sport, betType, direction ?? 'none'))
-    .setTitle('Submit Your Parlay Pick');
+    .setCustomId(buildCustomId(mode, 'modal', userId, sport, betType, direction ?? 'none'))
+    .setTitle(mode === 'replace' ? 'Replace Your Parlay Pick' : 'Submit Your Parlay Pick');
 
   const rows: ActionRowBuilder<TextInputBuilder>[] = [];
-  const add = (input: TextInputBuilder) => rows.push(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+  const add = (input: TextInputBuilder) =>
+    rows.push(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
 
   if (betType === 'player_prop') {
     add(textInput('subject', 'Player', 'Malik Nabers'));
@@ -134,26 +135,34 @@ function isOwner(interactionUserId: string, ownerId: string): boolean {
   return interactionUserId === ownerId;
 }
 
-export async function startPick(interaction: ChatInputCommandInteraction) {
+export async function startPick(
+  interaction: ChatInputCommandInteraction,
+  mode: 'pick' | 'replace' = 'pick'
+) {
   if (env.PICK_COMMAND_CHANNEL_ID && interaction.channelId !== env.PICK_COMMAND_CHANNEL_ID) {
     await interaction.reply({
-      content: `Use \`/pick\` in <#${env.PICK_COMMAND_CHANNEL_ID}>.`,
-      ephemeral: true
+      content: `Use \`/${mode === 'replace' ? 'replacepick' : 'pick'}\` in <#${env.PICK_COMMAND_CHANNEL_ID}>.`,
+      flags: 64
     });
     return;
   }
 
+  const heading = mode === 'replace'
+    ? '**Replace your current Irving parlay pick**\n\nYour existing pick stays active until the replacement is successfully submitted.'
+    : '**Submit your Irving weekly parlay pick**';
+
   await interaction.reply({
-    content: '**Submit your Irving weekly parlay pick**\n\nFirst, choose the sport:',
-    components: [sportRow(interaction.user.id)],
-    ephemeral: true
+    content: `${heading}\n\nChoose the football league:`,
+    components: [sportRow(interaction.user.id, mode)],
+    flags: 64
   });
 }
 
 export async function handlePickSelect(interaction: StringSelectMenuInteraction) {
   const parts = parseCustomId(interaction.customId);
-  if (parts[0] !== 'pick') return false;
+  if (parts[0] !== 'pick' && parts[0] !== 'replace') return false;
 
+  const mode = parts[0] as 'pick' | 'replace';
   const stage = parts[1];
   const ownerId = parts[2];
   if (!stage || !ownerId) return false;
@@ -168,8 +177,8 @@ export async function handlePickSelect(interaction: StringSelectMenuInteraction)
     if (!sport) return true;
 
     await interaction.update({
-      content: `**${labelForSport(sport)} selected.**\n\nNow choose the bet type:`,
-      components: [betTypeRow(ownerId, sport)]
+      content: `**${labelForSport(sport)} selected.**\n\nNow choose the wager type:`,
+      components: [betTypeRow(ownerId, sport, mode)]
     });
     return true;
   }
@@ -182,10 +191,10 @@ export async function handlePickSelect(interaction: StringSelectMenuInteraction)
     if (DIRECTION_TYPES.has(betType)) {
       await interaction.update({
         content: `**${labelForSport(sport)} · ${labelForBetType(betType)}**\n\nChoose the side:`,
-        components: [directionRow(ownerId, sport, betType)]
+        components: [directionRow(ownerId, sport, betType, mode)]
       });
     } else {
-      await interaction.showModal(buildPickModal(ownerId, sport, betType, null));
+      await interaction.showModal(buildPickModal(ownerId, sport, betType, null, mode));
     }
     return true;
   }
@@ -196,7 +205,7 @@ export async function handlePickSelect(interaction: StringSelectMenuInteraction)
     const direction = interaction.values[0];
     if (!sport || !betType || !direction) return true;
 
-    await interaction.showModal(buildPickModal(ownerId, sport, betType, direction));
+    await interaction.showModal(buildPickModal(ownerId, sport, betType, direction, mode));
     return true;
   }
 
@@ -215,8 +224,9 @@ function optionalField(interaction: ModalSubmitInteraction, id: string): string 
 
 export async function handlePickModal(interaction: ModalSubmitInteraction) {
   const parts = parseCustomId(interaction.customId);
-  if (parts[0] !== 'pick' || parts[1] !== 'modal') return false;
+  if ((parts[0] !== 'pick' && parts[0] !== 'replace') || parts[1] !== 'modal') return false;
 
+  const mode = parts[0] as 'pick' | 'replace';
   const ownerId = parts[2];
   const sport = parts[3];
   const betType = parts[4];
@@ -270,7 +280,8 @@ export async function handlePickModal(interaction: ModalSubmitInteraction) {
     line,
     odds,
     notes,
-    sportsbook: env.SPORTSBOOK_NAME
+    sportsbook: env.SPORTSBOOK_NAME,
+    replaceExisting: mode === 'replace'
   };
 
   await interaction.deferReply({ ephemeral: true });
@@ -293,12 +304,20 @@ export async function handlePickModal(interaction: ModalSubmitInteraction) {
 
   const sent = await channel.send({ embeds: [buildPickEmbed(pick, apiResponse)] });
 
+  if (env.IRVING_API_ENABLED && apiResponse.pick?.id) {
+    try {
+      await linkDiscordMessageToIrving(apiResponse.pick.id, sent.id);
+    } catch (error) {
+      console.error('Unable to link Discord message to Irving pick:', error);
+    }
+  }
+
   const modeNote = env.IRVING_API_ENABLED
     ? 'Saved to Irving and posted to the parlay channel.'
     : 'Posted in **TEST MODE**. Irving API saving is currently disabled.';
 
   await interaction.editReply(
-    `✅ **Pick submitted.** ${modeNote}\n${sent.url}`
+    `${mode === 'replace' ? '🔁 **Pick replaced.**' : '✅ **Pick submitted.**'} ${modeNote}\n${sent.url}`
   );
 
   return true;
