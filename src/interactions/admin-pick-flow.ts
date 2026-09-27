@@ -3,7 +3,6 @@ import {
   ChatInputCommandInteraction,
   ModalBuilder,
   ModalSubmitInteraction,
-  PermissionFlagsBits,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   TextInputBuilder,
@@ -33,13 +32,15 @@ type ManagerChoice = {
   teamName: string;
 };
 
+const PICKFOR_ALLOWED_USER_IDS = new Set([
+  '120354923958370304',
+  '1542526581333954623'
+]);
+
 function hasAdminAccess(
   interaction: ChatInputCommandInteraction | StringSelectMenuInteraction | ModalSubmitInteraction
 ) {
-  return Boolean(
-    interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ||
-    interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
-  );
+  return PICKFOR_ALLOWED_USER_IDS.has(interaction.user.id);
 }
 
 function managerRow(adminUserId: string, managers: ManagerChoice[]) {
