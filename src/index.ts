@@ -1,5 +1,6 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { env } from './config/env.js';
+import { handleAdminPickModal, handleAdminPickSelect, startPickFor } from './interactions/admin-pick-flow.js';
 import { handlePickModal, handlePickSelect, startPick } from './interactions/pick-flow.js';
 import {
   showDuplicates,
@@ -32,6 +33,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       switch (interaction.commandName) {
         case 'pick':
           await startPick(interaction, 'pick');
+          break;
+        case 'pickfor':
+          await startPickFor(interaction);
           break;
         case 'replacepick':
           await startPick(interaction, 'replace');
@@ -80,11 +84,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu()) {
+      if (await handleAdminPickSelect(interaction)) return;
       await handlePickSelect(interaction);
       return;
     }
 
     if (interaction.isModalSubmit()) {
+      if (await handleAdminPickModal(interaction)) return;
       await handlePickModal(interaction);
     }
   } catch (error) {
