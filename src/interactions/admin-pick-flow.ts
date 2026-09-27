@@ -201,21 +201,24 @@ export async function startPickFor(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  // Acknowledge Discord immediately before making the Irving API request.
+  // Discord interactions time out if they are not acknowledged within a few seconds.
+  await interaction.deferReply({ flags: 64 });
+
   const data = await queryIrving('missing');
   const missing = data.missing ?? [];
 
   if (!missing.length) {
-    await interaction.reply({
+    await interaction.editReply({
       content: '✅ Everybody already has a pick in for the current week.',
-      flags: 64
+      components: []
     });
     return;
   }
 
-  await interaction.reply({
+  await interaction.editReply({
     content: '**Commissioner Pick Entry**\n\nChoose the manager you are submitting for:',
-    components: [managerRow(interaction.user.id, missing)],
-    flags: 64
+    components: [managerRow(interaction.user.id, missing)]
   });
 }
 
