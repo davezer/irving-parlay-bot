@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { pickCommand } from './pick.js';
+import { pickForCommand } from './pickfor.js';
 
 export const weeklyPicksCommand = new SlashCommandBuilder()
   .setName('weeklypicks')
@@ -71,6 +72,7 @@ export const replacePickCommand = new SlashCommandBuilder()
 
 export const commands = [
   pickCommand,
+  pickForCommand,
   replacePickCommand,
   weeklyPicksCommand,
   myPickCommand,
