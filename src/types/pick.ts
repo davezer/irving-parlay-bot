@@ -14,6 +14,7 @@ export interface PickSubmission {
   notes: string | null;
   sportsbook: string;
   replaceExisting?: boolean;
+  managerIdOverride?: string;
 }
 
 export interface IrvingPickResponse {
